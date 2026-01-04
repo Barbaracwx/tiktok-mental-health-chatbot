@@ -15,7 +15,26 @@ const AI_MODEL = "azure~anthropic.claude-4-sonnet";
 const chatSessions = new Map();
 
 export default async function handler(req, res) {
-    // Only accept POST requests
+    // Only accept POST requests (and GET for manual session clear)
+    if (req.method === 'GET') {
+        // GET request to clear sessions
+        const action = req.query.action;
+        if (action === 'clear') {
+            const count = chatSessions.size;
+            chatSessions.clear();
+            return res.status(200).json({ 
+                success: true, 
+                message: `Cleared ${count} chat sessions`,
+                cleared: count
+            });
+        }
+        return res.status(200).json({ 
+            success: true,
+            message: 'Webhook is running',
+            activeSessions: chatSessions.size
+        });
+    }
+    
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
