@@ -54,28 +54,35 @@ export default async function handler(req, res) {
             console.log('Could not parse content:', e);
         }
         
+        // ⚡ CRITICAL: Respond immediately to prevent TikTok retries
+        res.status(200).json({ 
+            success: true, 
+            message: 'Webhook received',
+            event: webhookData.event 
+        });
+        
+        // Process the webhook AFTER responding
         // Only handle incoming messages from USERS (not messages we send)
         if (webhookData.event === 'im_receive_msg') {
-            await handleIncomingMessage(webhookData, content);
+            // Process asynchronously (don't await)
+            handleIncomingMessage(webhookData, content).catch(error => {
+                console.error('Error in async message handling:', error);
+            });
         } else if (webhookData.event === 'im_send_msg') {
             console.log('Message sent by bot - ignoring to avoid loop');
         } else {
             console.log('Other event type:', webhookData.event);
         }
         
-        // Always respond with 200 OK
-        return res.status(200).json({ 
-            success: true, 
-            message: 'Webhook received',
-            event: webhookData.event 
-        });
-        
     } catch (error) {
         console.error('Error processing webhook:', error);
-        return res.status(200).json({ 
-            success: false, 
-            error: error.message 
-        });
+        // Still return 200 to prevent retries
+        if (!res.headersSent) {
+            return res.status(200).json({ 
+                success: false, 
+                error: error.message 
+            });
+        }
     }
 }
 
