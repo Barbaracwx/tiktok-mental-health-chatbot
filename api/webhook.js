@@ -213,10 +213,10 @@ async function sendMessageToAI(chatId, message) {
 async function sendTikTokMessage(businessId, conversationId, messageText) {
     const url = 'https://business-api.tiktok.com/open_api/v1.3/business/message/send/';
     
-    console.log('Sending TikTok message...');
+    console.log('🚀 Sending TikTok message...');
     console.log('Business ID:', businessId);
     console.log('Conversation ID:', conversationId);
-    console.log('Message:', messageText);
+    console.log('Message length:', messageText.length, 'characters');
     
     const payload = {
         business_id: businessId,
@@ -228,22 +228,34 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
         }
     };
     
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Token': ACCESS_TOKEN
-        },
-        body: JSON.stringify(payload)
-    });
-    
-    const data = await response.json();
-    
-    if (data.code !== 0) {
-        console.error('TikTok API Error:', data);
-        throw new Error(`TikTok API Error: ${data.message}`);
+    try {
+        console.log('📡 Making fetch request to TikTok API...');
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Token': ACCESS_TOKEN
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(10000) // 10 second timeout
+        });
+        
+        console.log('📥 Got response from TikTok, status:', response.status);
+        const data = await response.json();
+        console.log('📄 Response data:', JSON.stringify(data));
+        
+        if (data.code !== 0) {
+            console.error('❌ TikTok API Error:', data);
+            throw new Error(`TikTok API Error: ${data.message}`);
+        }
+        
+        console.log('✅ TikTok message sent successfully');
+        return data;
+    } catch (error) {
+        console.error('💥 Error in sendTikTokMessage:', error.name, error.message);
+        if (error.name === 'TimeoutError') {
+            console.error('⏱️ Request timed out after 10 seconds');
+        }
+        throw error;
     }
-    
-    console.log('TikTok message sent successfully');
-    return data;
 }
