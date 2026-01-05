@@ -1,3 +1,6 @@
+export const config = {
+  runtime: "nodejs"
+};
 // api/webhook.js
 // TikTok webhook handler with AI agent integration
 
