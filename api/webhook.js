@@ -3,7 +3,7 @@
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.UevSun6gz95HQEH7YCBumkDvLmVDz8PdHrEnaPoZw70J509JkqzSuOxZIYeu!6197.s1';
+const ACCESS_TOKEN = 'act.PwSLDT5yVkI4Z3tg7nkTW3kZl8NngfAA9KYAVIAtTgfX5hJuXjXAwsFznhUp!6152.s1';
 
 // AI Agent URLs
 const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
@@ -156,56 +156,84 @@ async function handleIncomingMessage(webhookData, content) {
 
 // Create a new AI chat session
 async function createAIChat() {
-    console.log('Creating AI chat with model:', AI_MODEL);
+    console.log('🤖 Creating AI chat with model:', AI_MODEL);
     
-    const response = await fetch(CREATE_CHAT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            model: AI_MODEL
-        })
-    });
-    
-    if (!response.ok) {
-        throw new Error(`Failed to create AI chat: ${response.status}`);
+    try {
+        console.log('📡 Making fetch request to Render...');
+        const response = await fetch(CREATE_CHAT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                model: AI_MODEL
+            }),
+            signal: AbortSignal.timeout(30000) // 30 second timeout
+        });
+        
+        console.log('📥 Got response from backend, status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Backend error response:', errorText);
+            throw new Error(`Failed to create AI chat: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ AI chat created, ID:', data.id);
+        
+        return data.id;
+    } catch (error) {
+        console.error('💥 Error creating AI chat:', error.name, error.message);
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+            console.error('⏱️ Backend request timed out after 30 seconds');
+            throw new Error('Backend service is not responding. Please try again.');
+        }
+        throw error;
     }
-    
-    const data = await response.json();
-    console.log('AI chat created:', data);
-    
-    return data.id;
 }
 
 // Send message to AI agent and get response
 async function sendMessageToAI(chatId, message) {
-    console.log('Sending to AI - Chat ID:', chatId, 'Message:', message);
+    console.log('💬 Sending to AI - Chat ID:', chatId, 'Message:', message);
     
-    const response = await fetch(SEND_MESSAGE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            content: message,
-            chat_id: chatId
-        })
-    });
-    
-    if (!response.ok) {
-        throw new Error(`Failed to send message to AI: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('AI response data:', data);
-    
-    // Extract the text response from AI
-    // Your AI returns: { response: { content: "text here" } }
-    if (data.response?.content) {
-        return data.response.content;
-    } else if (data.response) {
-        return data.response;
-    } else {
-        // Fallback if format is unexpected
-        console.warn('Unexpected AI response format:', data);
-        return "Sorry, I couldn't process that response.";
+    try {
+        console.log('📡 Making fetch request to backend...');
+        const response = await fetch(SEND_MESSAGE_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                content: message,
+                chat_id: chatId
+            }),
+            signal: AbortSignal.timeout(30000) // 30 second timeout
+        });
+        
+        console.log('📥 Got response from backend, status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Backend error response:', errorText);
+            throw new Error(`Failed to send message to AI: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ AI response received, length:', data.response?.content?.length || 0, 'chars');
+        
+        // Extract the text response from AI
+        if (data.response?.content) {
+            return data.response.content;
+        } else if (data.response) {
+            return data.response;
+        } else {
+            console.warn('Unexpected AI response format:', data);
+            return "Sorry, I couldn't process that response.";
+        }
+    } catch (error) {
+        console.error('💥 Error sending message to AI:', error.name, error.message);
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+            console.error('⏱️ Backend request timed out after 30 seconds');
+            throw new Error('AI service is taking too long to respond. Please try again.');
+        }
+        throw error;
     }
 }
 
@@ -258,4 +286,4 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
         }
         throw error;
     }
-} 
+}
