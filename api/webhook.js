@@ -117,6 +117,7 @@ async function handleIncomingMessage(webhookData, content) {
         
         if (!aiChatId) {
             console.log('Creating new AI chat session...');
+            console.log("🚨 typeof fetch:", typeof fetch);
             aiChatId = await createAIChat();
             chatSessions.set(content.conversation_id, aiChatId);
             console.log('AI Chat ID:', aiChatId);
