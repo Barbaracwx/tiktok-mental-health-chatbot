@@ -6,8 +6,8 @@ const APP_ID = '7576146137725878288';
 const ACCESS_TOKEN = 'act.UevSun6gz95HQEH7YCBumkDvLmVDz8PdHrEnaPoZw70J509JkqzSuOxZIYeu!6197.s1';
 
 // AI Agent URLs
-const CREATE_CHAT_URL = "https://aibot-backend-xl3x.onrender.com/create-chat";
-const SEND_MESSAGE_URL = "https://aibot-backend-xl3x.onrender.com/send-message";
+const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
+const SEND_MESSAGE_URL = "https://aibot-backend-vercel.vercel.app/api/send-message";
 const AI_MODEL = "azure~anthropic.claude-4-sonnet";
 
 // Store chat sessions (conversation_id -> chat_id mapping)
