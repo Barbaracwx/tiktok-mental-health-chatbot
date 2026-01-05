@@ -89,8 +89,26 @@ export default async function handler(req, res) {
     }
 }
 
+// Keep track of message IDs we already responded to
+const repliedMessages = new Set();
+
 // Handle incoming messages and get AI response
 async function handleIncomingMessage(webhookData, content) {
+    const messageId = content.message_id;
+
+    // 🔒 GUARD CLAUSE: ignore messages we've already replied to
+    if (!messageId) {
+        console.log('⚠️ No message_id found, skipping');
+        return;
+    }
+    if (repliedMessages.has(messageId)) {
+        console.log('⚠️ Already replied to this message, skipping:', messageId);
+        return;
+    }
+
+    // Mark this message as replied
+    repliedMessages.add(messageId);
+
     console.log('📨 INCOMING MESSAGE');
     console.log('From:', content.from);
     console.log('From User Role:', content.from_user?.role);
