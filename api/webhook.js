@@ -156,41 +156,66 @@ async function handleIncomingMessage(webhookData, content) {
 }
 
 // Create a new AI chat session
+// async function createAIChat() {
+//     console.log('🤖 Creating AI chat with model:', AI_MODEL);
+    
+//     try {
+//         console.log('📡 Making fetch request to Render...');
+//         const response = await fetch(CREATE_CHAT_URL, {
+//             method: "POST",
+//             headers: { "Content-Type": "application/json" },
+//             body: JSON.stringify({
+//                 model: AI_MODEL
+//             }),
+//             signal: AbortSignal.timeout(30000) // 30 second timeout
+//         });
+        
+//         console.log('📥 Got response from backend, status:', response.status);
+        
+//         if (!response.ok) {
+//             const errorText = await response.text();
+//             console.error('❌ Backend error response:', errorText);
+//             throw new Error(`Failed to create AI chat: ${response.status} ${response.statusText}`);
+//         }
+        
+//         const data = await response.json();
+//         console.log('✅ AI chat created, ID:', data.id);
+        
+//         return data.id;
+//     } catch (error) {
+//         console.error('💥 Error creating AI chat:', error.name, error.message);
+//         if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+//             console.error('⏱️ Backend request timed out after 30 seconds');
+//             throw new Error('Backend service is not responding. Please try again.');
+//         }
+//         throw error;
+//     }
+// }
+
 async function createAIChat() {
     console.log('🤖 Creating AI chat with model:', AI_MODEL);
-    
+    console.log('🚪 About to call CREATE_CHAT_URL:', CREATE_CHAT_URL);
+
     try {
-        console.log('📡 Making fetch request to Render...');
         const response = await fetch(CREATE_CHAT_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model: AI_MODEL
-            }),
-            signal: AbortSignal.timeout(30000) // 30 second timeout
+            body: JSON.stringify({ model: AI_MODEL }),
+            signal: AbortSignal.timeout(10000)
         });
-        
-        console.log('📥 Got response from backend, status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Backend error response:', errorText);
-            throw new Error(`Failed to create AI chat: ${response.status} ${response.statusText}`);
-        }
-        
+
+        console.log('📥 Fetch returned, status:', response.status);
+
         const data = await response.json();
         console.log('✅ AI chat created, ID:', data.id);
-        
+
         return data.id;
     } catch (error) {
-        console.error('💥 Error creating AI chat:', error.name, error.message);
-        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-            console.error('⏱️ Backend request timed out after 30 seconds');
-            throw new Error('Backend service is not responding. Please try again.');
-        }
+        console.error('💥 Fetch failed:', error.name, error.message);
         throw error;
     }
 }
+
 
 // Send message to AI agent and get response
 async function sendMessageToAI(chatId, message) {
