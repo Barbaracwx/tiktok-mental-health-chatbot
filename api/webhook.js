@@ -57,6 +57,15 @@ export default async function handler(req, res) {
             console.log('Could not parse content:', e);
         }
 
+        // ==============================
+        // 🔒 GUARD CLAUSE TO PREVENT LOOP
+        // Ignore messages sent by the bot itself
+        if (content.from_user?.role === 'business_account') {
+            console.log('🤖 Message sent by bot — ignoring to prevent loop');
+            // respond to webhook immediately so TikTok won't retry
+            return res.status(200).json({ ok: true, message: 'Ignored bot message' });
+        }
+
         if (webhookData.event === 'im_receive_msg') {
             await handleIncomingMessage(webhookData, content);
         }
