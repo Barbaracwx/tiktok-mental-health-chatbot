@@ -135,20 +135,49 @@ async function handleIncomingMessage(webhookData, content) {
     try {
         // Get or create AI chat session for this TikTok conversation
         let aiChatId = chatSessions.get(content.conversation_id);
+        let isNewConversation = false;
         
         if (!aiChatId) {
             console.log('Creating new AI chat session...');
-            console.log("🚨 typeof fetch:", typeof fetch);
             aiChatId = await createAIChat();
             chatSessions.set(content.conversation_id, aiChatId);
             console.log('AI Chat ID:', aiChatId);
+            isNewConversation = true;
+            
+            // 🎭 SETUP: Prime the AI with its role as a supportive friend/therapist
+            console.log('🎭 Setting up AI personality...');
+            await sendMessageToAI(aiChatId, 
+                "You are now a supportive friend and mental health companion for young people in Singapore (ages 13-30). " +
+                "Your role is to: " +
+                "1. Listen with empathy and without judgment " +
+                "2. Provide emotional support and coping strategies " +
+                "3. Help users process their feelings in a healthy way " +
+                "4. Be warm, friendly, and approachable - like talking to a caring friend " +
+                "Keep responses concise (2-4 sentences usually) and conversational. " +
+                "Use a warm, understanding tone. Avoid being too formal or clinical. " +
+                "Ready to support the next user with care and compassion."
+            );
+            console.log('✅ AI personality configured');
         } else {
             console.log('Using existing AI Chat ID:', aiChatId);
         }
         
-        // Send message to AI agent and get response
+        // Prepare message for AI
+        let messageToAI = userMessage;
+        
+        // If this is the first real message from the user, add welcome context
+        if (isNewConversation) {
+            console.log('👋 First message - adding welcome context...');
+            messageToAI = 
+                `This is my first message to you. Please respond by: ` +
+                `1) Giving me a warm, brief welcome (1-2 sentences) introducing yourself as a supportive space for emotions and mental health ` +
+                `2) Then naturally acknowledging and responding to what I just said: "${userMessage}" ` +
+                `Keep it conversational and flow naturally - don't make it sound like two separate sections.`;
+        }
+        
+        // Send to AI and get response
         console.log('Sending message to AI agent...');
-        const aiResponse = await sendMessageToAI(aiChatId, userMessage);
+        const aiResponse = await sendMessageToAI(aiChatId, messageToAI);
         console.log('AI Response:', aiResponse);
         
         // Send AI's response back to user on TikTok
@@ -177,42 +206,6 @@ async function handleIncomingMessage(webhookData, content) {
 }
 
 // Create a new AI chat session
-// async function createAIChat() {
-//     console.log('🤖 Creating AI chat with model:', AI_MODEL);
-    
-//     try {
-//         console.log('📡 Making fetch request to Render...');
-//         const response = await fetch(CREATE_CHAT_URL, {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify({
-//                 model: AI_MODEL
-//             }),
-//             signal: AbortSignal.timeout(30000) // 30 second timeout
-//         });
-        
-//         console.log('📥 Got response from backend, status:', response.status);
-        
-//         if (!response.ok) {
-//             const errorText = await response.text();
-//             console.error('❌ Backend error response:', errorText);
-//             throw new Error(`Failed to create AI chat: ${response.status} ${response.statusText}`);
-//         }
-        
-//         const data = await response.json();
-//         console.log('✅ AI chat created, ID:', data.id);
-        
-//         return data.id;
-//     } catch (error) {
-//         console.error('💥 Error creating AI chat:', error.name, error.message);
-//         if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-//             console.error('⏱️ Backend request timed out after 30 seconds');
-//             throw new Error('Backend service is not responding. Please try again.');
-//         }
-//         throw error;
-//     }
-// }
-
 async function createAIChat() {
     console.log('🤖 Creating AI chat with model:', AI_MODEL);
     console.log('🚪 About to call CREATE_CHAT_URL:', CREATE_CHAT_URL);
@@ -236,7 +229,6 @@ async function createAIChat() {
         throw error;
     }
 }
-
 
 // Send message to AI agent and get response
 async function sendMessageToAI(chatId, message) {
