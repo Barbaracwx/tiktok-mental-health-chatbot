@@ -6,7 +6,7 @@ export const config = {
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.NsUwTcv246l0o49sH00GiMDjIo595gQ6NEDf9CyRlvopBLHIU6UCVUlZAebc!6234.s1';
+const ACCESS_TOKEN = 'act.PwSLDT5yVkI4Z3tg7nkTW3kZl8NngfAA9KYAVIAtTgfX5hJuXjXAwsFznhUp!6152.s1';
 
 // AI Agent URLs
 const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
@@ -177,6 +177,13 @@ async function handleIncomingMessage(webhookData, content) {
         
         // Send to AI and get response
         console.log('Sending message to AI agent...');
+
+        // ⌨️ SHOW TYPING INDICATOR
+        await sendTypingIndicator(
+            webhookData.user_openid,
+            content.conversation_id
+        );
+
         const aiResponse = await sendMessageToAI(aiChatId, messageToAI);
         console.log('AI Response:', aiResponse);
         
