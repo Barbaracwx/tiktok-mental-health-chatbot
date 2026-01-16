@@ -11,7 +11,7 @@ const ACCESS_TOKEN = 'act.NsUwTcv246l0o49sH00GiMDjIo595gQ6NEDf9CyRlvopBLHIU6UCVU
 // AI Agent URLs
 const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
 const SEND_MESSAGE_URL = "https://aibot-backend-vercel.vercel.app/api/send-message";
-const AI_MODEL = "azure~anthropic.claude-4-sonnet";
+const AI_MODEL = "azure~google.gemini-2-5-flash-lite";
 
 // Store chat sessions (conversation_id -> chat_id mapping)
 // In production, you'd want to use a database instead of memory
