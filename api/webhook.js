@@ -17,6 +17,51 @@ const AI_MODEL = "azure~google.gemini-2-5-flash-lite";
 // In production, you'd want to use a database instead of memory
 const chatSessions = new Map();
 
+// ==============================
+// 🚨 Crisis Detection & Risk Classification
+// ==============================
+function classifyRisk(message) {
+    if (!message) return "LOW";
+
+    const text = message.toLowerCase();
+
+    const HIGH_RISK = [
+        "kill myself",
+        "suicide",
+        "end my life",
+        "want to die",
+        "don't want to live",
+        "hurt myself",
+        "self harm",
+        "cut myself",
+        "overdose",
+        "jump off"
+    ];
+
+    const MEDIUM_RISK = [
+        "hopeless",
+        "empty",
+        "worthless",
+        "no point",
+        "giving up",
+        "can't go on",
+        "overwhelmed",
+        "so tired of everything",
+        "alone"
+    ];
+
+    if (HIGH_RISK.some(k => text.includes(k))) {
+        return "HIGH";
+    }
+
+    if (MEDIUM_RISK.some(k => text.includes(k))) {
+        return "MEDIUM";
+    }
+
+    return "LOW";
+}
+
+
 export default async function handler(req, res) {
     // Only accept POST requests (and GET for manual session clear)
     if (req.method === 'GET') {
@@ -131,6 +176,10 @@ async function handleIncomingMessage(webhookData, content) {
     
     const userMessage = content.text.body;
     console.log('User Message:', userMessage);
+    //Assess mental health risk
+    const riskLevel = classifyRisk(userMessage);
+    console.log('🧠 Risk Level:', riskLevel);
+
     
     try {
         // Get or create AI chat session for this TikTok conversation
@@ -164,6 +213,20 @@ async function handleIncomingMessage(webhookData, content) {
         
         // Prepare message for AI
         let messageToAI = userMessage;
+
+        if (riskLevel === "MEDIUM") {
+            messageToAI =
+                "The user is emotionally overwhelmed. Respond with empathy, validation, and gentle encouragement to seek support.\n\n" +
+                "User said: " + userMessage;
+        }
+
+        if (riskLevel === "HIGH") {
+            messageToAI =
+                "The user has expressed thoughts of self-harm or suicide. " +
+                "Respond with empathy and presence. Avoid advice, avoid problem-solving, " +
+                "and gently encourage reaching out to trusted people or professionals.\n\n" +
+                "User said: " + userMessage;
+        }
         
         // If this is the first real message from the user, add welcome context
         if (isNewConversation) {
@@ -186,8 +249,24 @@ async function handleIncomingMessage(webhookData, content) {
 
         const aiResponse = await sendMessageToAI(aiChatId, messageToAI);
         console.log('AI Response:', aiResponse);
-        
-        // Send AI's response back to user on TikTok
+
+        // Immediate crisis response for HIGH risk
+        if (riskLevel === "HIGH") {
+            const crisisMessage =
+                "I’m really glad you told me this. You’re not alone, and help is available.\n\n" +
+                "If things feel overwhelming right now, please reach out to Care Corner. " +
+                "They provide free and confidential mental health support for young people in Singapore.\n\n" +
+                "👉 https://carey.carecorner.org.sg/\n\n" +
+                "If you’re in immediate danger, please call 999 or go to the nearest A&E.";
+            
+                // Send AI's response back to user on TikTok
+            await sendTikTokMessage(
+                webhookData.user_openid,
+                content.conversation_id,
+                crisisMessage
+            );
+        }
+
         await sendTikTokMessage(
             webhookData.user_openid,
             content.conversation_id,
