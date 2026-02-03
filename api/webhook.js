@@ -11,7 +11,7 @@ const ACCESS_TOKEN = 'act.dTcU2YtczxPGe3wjZmvwWMNXi5LoLmzVRwuTUoHNWNZNDJiqqVkStj
 // AI Agent URLs
 //const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
 //const SEND_MESSAGE_URL = "https://aibot-backend-vercel.vercel.app/api/send-message";
-const AI_MODEL = "azure~google.gemini-2-5-flash-lite";
+const AI_MODEL = "azure~openai.gpt-4o-mini";
 
 const CREATE_CHAT_URL = "https://carelytics.sdnim.com/api/flows/trigger/0dc3a82d-1e76-408e-b4f9-cced0f5d9fc2";
 const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9c-555e-4b1b-af74-ef6f229f46e4";
