@@ -6,12 +6,15 @@ export const config = {
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.JfB32U8sPzZQAFNQxbF8g1cmmT87Cm9FPywuciKpJYsvMADUObnIkNdpkQQO!6156.s1';
+const ACCESS_TOKEN = 'act.1yaffTdfxN5NIBwE7X8Y0D8nk6c4HbGICLP5Z5rapWSWD7fI8wZuRvNStFnO!6222.s1';
 
 // AI Agent URLs
-const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
-const SEND_MESSAGE_URL = "https://aibot-backend-vercel.vercel.app/api/send-message";
+//const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
+//const SEND_MESSAGE_URL = "https://aibot-backend-vercel.vercel.app/api/send-message";
 const AI_MODEL = "azure~google.gemini-2-5-flash-lite";
+
+const CREATE_CHAT_URL = "https://carelytics.sdnim.com/api/flows/trigger/0dc3a82d-1e76-408e-b4f9-cced0f5d9fc2";
+const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9c-555e-4b1b-af74-ef6f229f46e4";
 
 // Store chat sessions (conversation_id -> chat_id mapping)
 // In production, you'd want to use a database instead of memory
