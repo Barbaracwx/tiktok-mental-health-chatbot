@@ -197,7 +197,7 @@ async function handleIncomingMessage(webhookData, content) {
             isNewConversation = true;
             
             // 🎭 SETUP: Prime the AI with its role as a supportive friend/therapist
-            // console.log('🎭 Setting up AI personality...');
+            console.log('🎭 Setting up AI personality...');
             //     await sendMessageToAI(aiChatId, 
             //         "You are now a supportive friend and mental health companion for young people in Singapore (ages 13-30). " +
             //         "Your role is to: " +
