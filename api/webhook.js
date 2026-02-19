@@ -207,7 +207,7 @@ async function handleIncomingMessage(webhookData, content) {
                 "4. Be warm, friendly, and approachable - like talking to a caring friend " +
                 "Keep responses concise (2-4 sentences usually) and conversational. " +
                 "Use a warm, understanding tone. Avoid being too formal or clinical. " +
-                "Ready to support the next user with care and compassion."
+                "Ready to support the next user with care and compassion. Keep replies concise and easy to read — like a natural text conversation. Avoid long paragraphs or too many sentences."
             );
             console.log('✅ AI personality configured');
         } else {
