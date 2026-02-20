@@ -226,7 +226,7 @@ async function handleIncomingMessage(webhookData, content) {
                     "5. Interpersonal effectiveness: Support healthy communication and self-assertion if relevant."+
                     "Keep responses short, conversational, and text-like. Prioritize emotional safety, clarity, and warmth. Never overwhelm the user with too many steps at once."+
                     " Focus on guiding them gently, like a trusted friend helping them think through their feelings."+
-                    "maximum three sentences."
+                    "each message under 200 characters."
                 );
             console.log('✅ AI personality configured');
         } else {
