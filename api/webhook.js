@@ -6,7 +6,7 @@ export const config = {
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.R0huhaJIOWanfssBvibucrGErdmtFJrEOW5KXevt81dozskvLvqe10Lig2tq!6233.s1';
+const ACCESS_TOKEN = 'act.yK3wep6fGYR7utXGMMTjAVJ3Xhkx1YEZR9L8AXA01HwUiruWuX797jCKm9GD!6173.s1';
 
 // AI Agent URLs
 //const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
@@ -218,15 +218,7 @@ async function handleIncomingMessage(webhookData, content) {
                     "1. Identify unhelpful thinking patterns or distortions."+
                     "2. Offer balanced or alternative perspectives."+
                     "3. Suggest small, manageable coping strategies or skills to regulate emotions."+
-                    "Additionally, apply Dialectical Behaviour Therapy (DBT) skills to support emotional well-being:"+
-                    "1. Validation: Acknowledge and normalize feelings."+
-                    "2. Mindfulness: Help the user notice emotions without judgment."+
-                    "3. Distress tolerance: Suggest small coping steps for difficult moments."+
-                    "4. Emotional regulation: Give gentle guidance to manage intense feelings."+
-                    "5. Interpersonal effectiveness: Support healthy communication and self-assertion if relevant."+
-                    "Keep responses short, conversational, and text-like. Prioritize emotional safety, clarity, and warmth. Never overwhelm the user with too many steps at once."+
-                    " Focus on guiding them gently, like a trusted friend helping them think through their feelings."+
-                    "each message under 200 characters."
+                    "Keep responses under 200 characters."
                 );
             console.log('✅ AI personality configured');
         } else {
@@ -273,21 +265,21 @@ async function handleIncomingMessage(webhookData, content) {
         console.log('AI Response:', aiResponse);
 
         // Immediate crisis response for HIGH risk
-        if (riskLevel === "HIGH") {
-            const crisisMessage =
-                "I’m really glad you told me this. You’re not alone, and help is available.\n\n" +
-                "If things feel overwhelming right now, please reach out to Care Corner. " +
-                "They provide free and confidential mental health support for young people in Singapore.\n\n" +
-                "👉 https://carey.carecorner.org.sg/\n\n" +
-                "If you’re in immediate danger, please call 999 or go to the nearest A&E.";
+        // if (riskLevel === "HIGH") {
+        //     const crisisMessage =
+        //         "I’m really glad you told me this. You’re not alone, and help is available.\n\n" +
+        //         "If things feel overwhelming right now, please reach out to Care Corner. " +
+        //         "They provide free and confidential mental health support for young people in Singapore.\n\n" +
+        //         "👉 https://carey.carecorner.org.sg/\n\n" +
+        //         "If you’re in immediate danger, please call 999 or go to the nearest A&E.";
             
-                // Send AI's response back to user on TikTok
-            await sendTikTokMessage(
-                webhookData.user_openid,
-                content.conversation_id,
-                crisisMessage
-            );
-        }
+        //         // Send AI's response back to user on TikTok
+        //     await sendTikTokMessage(
+        //         webhookData.user_openid,
+        //         content.conversation_id,
+        //         crisisMessage
+        //     );
+        // }
 
         await sendTikTokMessage(
             webhookData.user_openid,
