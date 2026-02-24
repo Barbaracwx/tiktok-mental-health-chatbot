@@ -231,14 +231,14 @@ async function handleIncomingMessage(webhookData, content) {
         if (riskLevel === "MEDIUM") {
             messageToAI =
                 "The user is emotionally overwhelmed. Respond with empathy, validation, and gentle encouragement to seek support.\n\n" +
+                "After a while, can direct users to seek professional help to: https://carecorner-ist.my.site.com/insight/."
                 "User said: " + userMessage;
         }
 
         if (riskLevel === "HIGH") {
             messageToAI =
                 "The user has expressed thoughts of self-harm or suicide. " +
-                "Respond with empathy and presence. Avoid advice, avoid problem-solving, " +
-                "and gently encourage reaching out to trusted people or professionals.\n\n" +
+                "If suicide/self-harm intent or means are detected (e.g., pills), stop all coaching. Provide 1771 (National Mindline) and 995 (SCDF) immediately. Use only minimal grounding (e.g., press your thumb into your finger) to keep them present while they call." +
                 "User said: " + userMessage;
         }
         
