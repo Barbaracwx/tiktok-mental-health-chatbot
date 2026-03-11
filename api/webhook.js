@@ -6,7 +6,7 @@ export const config = {
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.Tt4U92squKO85snVMMQDRpnNU3NLxTMbAxfUwp7x4YHupZYCJS2OdaAHcZMr!6181.s1';
+const ACCESS_TOKEN = 'act.XXIudB9yUlJMckTQ34qSTpOwDaJzNRCcpxek3205UQDVI3TdZosmwW9ArcWL!6158.s1';
 
 // AI Agent URLs
 //const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
