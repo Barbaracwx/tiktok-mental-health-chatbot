@@ -1,12 +1,14 @@
 export const config = {
   runtime: "nodejs"
 };
+const { google } = require('googleapis');
 // api/webhook.js
 // TikTok webhook handler with AI agent integration
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.vU1Zaq80qAwGjRalwHcfg6Hv3LfUJ8YF4gZmwxR3EdqaWIosnPhWudk0ZQYH!6190.s1';
+const ACCESS_TOKEN = 'act.ircjeYaVPmRo74mOTeQjwRXmoKYbcLfZykQiMHtEIb0MUKE91AuNNoIFUfnX!6227.s1';
+const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 
 // AI Agent URLs
 //const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
@@ -19,6 +21,39 @@ const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9
 // Store chat sessions (conversation_id -> chat_id mapping)
 // In production, you'd want to use a database instead of memory
 const chatSessions = new Map();
+
+// Helper to log to Google Sheets
+async function logToSheet(chatId, userId, userMsg, aiMsg) {
+    try {
+        const auth = new google.auth.GoogleAuth({
+            credentials: {
+                client_email: process.env.GOOGLE_CLIENT_EMAIL,
+                // The replace here is CRUCIAL for Vercel to read the key correctly
+                private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            },
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+
+        const sheets = google.sheets({ version: 'v4', auth });
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Sheet1!A:E', // Make sure your tab is named Sheet1
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [[
+                    chatId.toString(), 
+                    userId.toString(), 
+                    userMsg, 
+                    aiMsg, 
+                    new Date().toLocaleString("en-SG", { timeZone: "Asia/Singapore" })
+                ]],
+            },
+        });
+        console.log("✅ Logged to Google Sheets");
+    } catch (error) {
+        console.error("❌ Google Sheets Error:", error);
+    }
+}
 
 // ==============================
 // 🚨 Crisis Detection & Risk Classification
@@ -194,7 +229,7 @@ async function handleIncomingMessage(webhookData, content) {
             aiChatId = await createAIChat();
             chatSessions.set(content.conversation_id, aiChatId);
             console.log('AI Chat ID:', aiChatId);
-            isNewConversation = true;
+            //isNewConversation = true;
             
             // 🎭 SETUP: Prime the AI with its role as a supportive friend/therapist
             console.log('🎭 Setting up AI personality...');
@@ -280,6 +315,13 @@ async function handleIncomingMessage(webhookData, content) {
         //         crisisMessage
         //     );
         // }
+
+        await logToSheet(
+            content.conversation_id, // chatId
+            content.from,            // userId (TikTok open_id)
+            userMessage,             // userMsg
+            aiResponse               // aiMsg
+        );
 
         await sendTikTokMessage(
             webhookData.user_openid,
