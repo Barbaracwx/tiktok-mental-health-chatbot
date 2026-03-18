@@ -7,7 +7,7 @@ const { google } = require('googleapis');
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.ircjeYaVPmRo74mOTeQjwRXmoKYbcLfZykQiMHtEIb0MUKE91AuNNoIFUfnX!6227.s1';
+const ACCESS_TOKEN = 'act.LLDF3xkKMTdpZ40stCfNK7rNxJZc4jViq7173cMRz7zW1sKOjX6UOaxqcpLy!6222.s1';
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 
 // AI Agent URLs
