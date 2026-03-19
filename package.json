@@ -1,6 +1,9 @@
 {
   "dependencies": {
+    "@upstash/redis": "^1.37.0",
     "google-auth-library": "^10.6.1",
-    "googleapis": "^171.4.0"
+    "googleapis": "^171.4.0",
+    "ioredis": "^5.10.0",
+    "redis": "^5.11.0"
   }
 }

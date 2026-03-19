@@ -4,11 +4,14 @@ export const config = {
 const { google } = require('googleapis');
 // api/webhook.js
 // TikTok webhook handler with AI agent integration
+const Redis = require('ioredis');
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-const ACCESS_TOKEN = 'act.LLDF3xkKMTdpZ40stCfNK7rNxJZc4jViq7173cMRz7zW1sKOjX6UOaxqcpLy!6222.s1';
+//const ACCESS_TOKEN = 'act.LLDF3xkKMTdpZ40stCfNK7rNxJZc4jViq7173cMRz7zW1sKOjX6UOaxqcpLy!6222.s1';
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
+const redis = new Redis(process.env.REDIS_URL);
+REDIS_URL="redis://default:M2xcOVvVCQplQapATmH6tM7uqYiWV6YJ@redis-12308.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:12308"
 
 // AI Agent URLs
 //const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
@@ -421,6 +424,8 @@ async function sendMessageToAI(chatId, message) {
 // Send a message via TikTok Business Messaging API
 async function sendTikTokMessage(businessId, conversationId, messageText) {
     const url = 'https://business-api.tiktok.com/open_api/v1.3/business/message/send/';
+
+    const dynamicToken = await redis.get('tiktok_access_token');
     
     console.log('🚀 Sending TikTok message...');
     console.log('Business ID:', businessId);
@@ -443,7 +448,7 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Token': ACCESS_TOKEN
+                'Access-Token': dynamicToken
             },
             body: JSON.stringify(payload),
             signal: AbortSignal.timeout(10000) // 10 second timeout
@@ -488,7 +493,7 @@ async function sendTypingIndicator(businessId, conversationId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Token': ACCESS_TOKEN
+                'Access-Token': dynamicToken
             },
             body: JSON.stringify(payload),
             signal: AbortSignal.timeout(5000) // 5 second timeout
