@@ -11,7 +11,6 @@ const APP_ID = '7576146137725878288';
 //const ACCESS_TOKEN = 'act.LLDF3xkKMTdpZ40stCfNK7rNxJZc4jViq7173cMRz7zW1sKOjX6UOaxqcpLy!6222.s1';
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 const redis = new Redis(process.env.REDIS_URL);
-REDIS_URL="redis://default:M2xcOVvVCQplQapATmH6tM7uqYiWV6YJ@redis-12308.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:12308"
 
 // AI Agent URLs
 //const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
