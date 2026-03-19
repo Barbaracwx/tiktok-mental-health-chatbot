@@ -39,7 +39,7 @@ async function logToSheet(chatId, userId, userMsg, aiMsg) {
         const sheets = google.sheets({ version: 'v4', auth });
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Sheet1!A:E', // Make sure your tab is named Sheet1
+            range: 'Raw_data!A:E', // Make sure your tab is named Sheet1
             valueInputOption: 'USER_ENTERED',
             resource: {
                 values: [[
