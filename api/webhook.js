@@ -387,7 +387,7 @@ async function sendMessageToAI(chatId, message) {
                 content: message,
                 chat_id: chatId
             }),
-            signal: AbortSignal.timeout(40000) // 30 second timeout
+            signal: AbortSignal.timeout(50000) // 50 second timeout
         });
         
         console.log('📥 Got response from backend, status:', response.status);
