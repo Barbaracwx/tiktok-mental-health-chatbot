@@ -425,6 +425,7 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
     const url = 'https://business-api.tiktok.com/open_api/v1.3/business/message/send/';
 
     const dynamicToken = await redis.get('tiktok_access_token');
+    console.log("Using token from Redis:", dynamicToken?.substring(0, 10) + "...");
     
     console.log('🚀 Sending TikTok message...');
     console.log('Business ID:', businessId);
