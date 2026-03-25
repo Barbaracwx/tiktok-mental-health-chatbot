@@ -183,8 +183,7 @@ function getStaticResponse(message) {
     // Define your triggers
     const triggers = {
         "book an appointment": "Sure! You can book an appointment with our team here: [INSERT LINK]. We're looking forward to seeing you!",
-        "caregiver": "yay!",
-        "parent": "yay!",
+        "I am a caregiver / parent": "yay!",
         "urgent danger": "Please stay calm. If you are in immediate danger, please call 995 or 1771 (National Mindline) immediately. I am an AI and cannot call emergency services for you.",
         "hello": "Hi there! How can I help you today?"
     };
