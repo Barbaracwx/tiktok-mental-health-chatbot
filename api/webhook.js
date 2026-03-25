@@ -180,15 +180,23 @@ function getStaticResponse(message) {
     
     const text = message.toLowerCase().trim();
 
-    // Define your triggers and responses here
+    // Define your triggers
     const triggers = {
-        "hi, i want to book an appointment": "Sure! You can book an appointment with our team here: [INSERT LINK]. We're looking forward to seeing you!",
-        "I am a caregiver / parent": "yay!",
-        "I am in urgent danger": "omg",
-        };
+        "book an appointment": "Sure! You can book an appointment with our team here: [INSERT LINK]. We're looking forward to seeing you!",
+        "caregiver": "yay!",
+        "parent": "yay!",
+        "urgent danger": "Please stay calm. If you are in immediate danger, please call 995 or 1771 (National Mindline) immediately. I am an AI and cannot call emergency services for you.",
+        "hello": "Hi there! How can I help you today?"
+    };
 
-    // Return the response if matched, otherwise return null
-    return triggers[text] || null;
+    // Loop through the triggers to see if the user's message CONTAINS the keyword
+    for (const [keyword, response] of Object.entries(triggers)) {
+        if (text.includes(keyword)) {
+            return response;
+        }
+    }
+
+    return null;
 }
 
 // Keep track of message IDs we already responded to
@@ -240,7 +248,7 @@ async function handleIncomingMessage(webhookData, content) {
         console.log("⚡ Static template found. Bypassing AI.");
         await logToSheet(conversationId, content.from, userMessage, staticReply);
         await sendTikTokMessage(openId, conversationId, staticReply);
-        return; //
+        return;
     }
 
     console.log('User Message:', userMessage);
