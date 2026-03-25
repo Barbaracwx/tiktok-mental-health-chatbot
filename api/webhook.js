@@ -174,6 +174,23 @@ export default async function handler(req, res) {
     }
 }
 
+// Function to check for "Quick-Reply" or "Hard-coded" triggers
+function getStaticResponse(message) {
+    if (!message) return null;
+    
+    const text = message.toLowerCase().trim();
+
+    // Define your triggers and responses here
+    const triggers = {
+        "hi, i want to book an appointment": "Sure! You can book an appointment with our team here: [INSERT LINK]. We're looking forward to seeing you!",
+        "I am a caregiver / parent": "yay!",
+        "I am in urgent danger": "omg",
+        };
+
+    // Return the response if matched, otherwise return null
+    return triggers[text] || null;
+}
+
 // Keep track of message IDs we already responded to
 const repliedMessages = new Set();
 
@@ -215,6 +232,17 @@ async function handleIncomingMessage(webhookData, content) {
     }
     
     const userMessage = content.text.body;
+    const conversationId = content.conversation_id;
+    const openId = webhookData.user_openid;
+
+    const staticReply = getStaticResponse(userMessage);
+    if (staticReply) {
+        console.log("⚡ Static template found. Bypassing AI.");
+        await logToSheet(conversationId, content.from, userMessage, staticReply);
+        await sendTikTokMessage(openId, conversationId, staticReply);
+        return; //
+    }
+
     console.log('User Message:', userMessage);
     //Assess mental health risk
     const riskLevel = classifyRisk(userMessage);
