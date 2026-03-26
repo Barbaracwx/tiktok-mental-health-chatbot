@@ -182,9 +182,10 @@ function getStaticResponse(message) {
 
     // Define your triggers
     const triggers = {
-        "book an appointment": "Sure! You can book an appointment with our team here: [INSERT LINK]. We're looking forward to seeing you!",
-        "i am a caregiver / parent": "yay!",
-        "i am in urgent danger": "Please stay calm. If you are in immediate danger, please call 995 or 1771 (National Mindline) immediately. I am an AI and cannot call emergency services for you.",
+        "book an appointment": "You can book a session with our team here. If you're unsure whether to book, I can help you figure that out too 😊\n\nhttps://carey.carecorner.org.sg",
+        "i am a caregiver / parent": "Thanks for supporting a young person — that matters a lot 💛 You can explore support options and resources here. If you’d like, I can also share tips on how to support them better.\n\nhttps://carecorner-ist.my.site.com/insight/",
+        "i am in urgent danger": "I’m really sorry you’re going through this. You don’t have to face it alone. If you are in immediate danger, please call 995. You can also talk to someone at 1771. I can stay with you while you reach out 💛",
+        "FAQs": "Here are some common questions about our services. If you don’t see what you need, just ask me — I’ll try my best to help.\n\nhttps://carey.carecorner.org.sg/faqs/"
     };
 
     // Loop through the triggers to see if the user's message CONTAINS the keyword
