@@ -25,7 +25,7 @@ const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9
 const chatSessions = new Map();
 
 // Helper to log to Google Sheets
-async function logToSheet(chatId, userId, userMsg, aiMsg) {
+async function logToSheet(chatId, userId, userMsg, aiMsg, riskLevel) {
     try {
         const auth = new google.auth.GoogleAuth({
             credentials: {
