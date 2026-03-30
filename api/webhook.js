@@ -57,50 +57,6 @@ async function logToSheet(chatId, userId, userMsg, aiMsg) {
     }
 }
 
-// ==============================
-// 🚨 Crisis Detection & Risk Classification
-// ==============================
-function classifyRisk(message) {
-    if (!message) return "LOW";
-
-    const text = message.toLowerCase();
-
-    const HIGH_RISK = [
-        "kill myself",
-        "suicide",
-        "end my life",
-        "want to die",
-        "don't want to live",
-        "hurt myself",
-        "self harm",
-        "cut myself",
-        "overdose",
-        "jump off"
-    ];
-
-    const MEDIUM_RISK = [
-        "hopeless",
-        "empty",
-        "worthless",
-        "no point",
-        "giving up",
-        "can't go on",
-        "overwhelmed",
-        "so tired of everything",
-        "alone"
-    ];
-
-    if (HIGH_RISK.some(k => text.includes(k))) {
-        return "HIGH";
-    }
-
-    if (MEDIUM_RISK.some(k => text.includes(k))) {
-        return "MEDIUM";
-    }
-
-    return "LOW";
-}
-
 
 export default async function handler(req, res) {
     // Only accept POST requests (and GET for manual session clear)
@@ -251,78 +207,20 @@ async function handleIncomingMessage(webhookData, content) {
     }
 
     console.log('User Message:', userMessage);
-    //Assess mental health risk
-    const riskLevel = classifyRisk(userMessage);
-    console.log('🧠 Risk Level:', riskLevel);
 
     
     try {
         // Get or create AI chat session for this TikTok conversation
         let aiChatId = chatSessions.get(content.conversation_id);
-        let isNewConversation = false;
         
         if (!aiChatId) {
             console.log('Creating new AI chat session...');
             aiChatId = await createAIChat();
             chatSessions.set(content.conversation_id, aiChatId);
             console.log('AI Chat ID:', aiChatId);
-            //isNewConversation = true;
-            
-            // 🎭 SETUP: Prime the AI with its role as a supportive friend/therapist
-            console.log('🎭 Setting up AI personality...');
-            //     await sendMessageToAI(aiChatId, 
-            //         "You are now a supportive friend and mental health companion for young people in Singapore (ages 13-30). " +
-            //         "Your role is to: " +
-            //         "1. Listen with empathy and without judgment " +
-            //         "3. Be warm, friendly, and approachable - like talking to a caring friend " +
-            //         "Keep replies concise and easy to read, like a natural text conversation. Avoid long paragraphs or too many sentences. Keep to maximum four sentences." +
-            //         "Respond as a supportive companion using Dialectical Behaviour Therapy (DBT) principles. Validate the user’s feelings first using non-judgmental language. Balance acceptance and change by showing understanding while gently encouraging helpful coping strategies." +
-            //         "Use principles from Dialectical Behaviour Therapy (DBT) where applicable: Validation: acknowledge and normalize feelings."+
-            //         "Mindfulness: help the user notice emotions without judgment."+
-            //         "Distress tolerance: suggest small coping steps for difficult moments."+
-            //         "Emotional regulation: give gentle guidance to manage intense feelings."+
-            //         "Interpersonal effectiveness: support healthy communication and self-assertion if relevant."+
-            //         "Keep responses concise, conversational, and friendly, like texting a trusted friend. Use simple language, short sentences, and a warm, supportive tone."
-
-            //     );
-                await sendMessageToAI(aiChatId, 
-                    "You are a compassionate, empathetic assistant. When a user shares struggles or negative thoughts, first validate their feelings sincerely, showing understanding without judgment. Then, help them reframe unhelpful thoughts using principles from Cognitive Behavioral Therapy (CBT):"+
-                    "1. Identify unhelpful thinking patterns or distortions."+
-                    "2. Offer balanced or alternative perspectives."+
-                    "3. Suggest small, manageable coping strategies or skills to regulate emotions."+
-                    "Keep responses under 200 characters."
-                );
-            console.log('✅ AI personality configured');
-        } else {
-            console.log('Using existing AI Chat ID:', aiChatId);
         }
-        
         // Prepare message for AI
         let messageToAI = userMessage;
-
-        if (riskLevel === "MEDIUM") {
-            messageToAI =
-                "The user is emotionally overwhelmed. Respond with empathy, validation, and gentle encouragement to seek support.\n\n" +
-                "After a while, can direct users to seek professional help to: https://carecorner-ist.my.site.com/insight/."
-                "User said: " + userMessage;
-        }
-
-        if (riskLevel === "HIGH") {
-            messageToAI =
-                "The user has expressed thoughts of self-harm or suicide. " +
-                "If suicide/self-harm intent or means are detected (e.g., pills), stop all coaching. Provide 1771 (National Mindline) and 995 (SCDF) immediately. Use only minimal grounding (e.g., press your thumb into your finger) to keep them present while they call." +
-                "User said: " + userMessage;
-        }
-        
-        // If this is the first real message from the user, add welcome context
-        if (isNewConversation) {
-            console.log('👋 First message - adding welcome context...');
-            messageToAI = 
-                `This is my first message to you. Please respond by: ` +
-                `1) Giving me a warm, brief welcome (1-2 sentences) introducing yourself as a supportive space for emotions and mental health ` +
-                `2) Then naturally acknowledging and responding to what I just said: "${userMessage}" ` +
-                `Keep it conversational and flow naturally - don't make it sound like two separate sections.`;
-        }
         
         // Send to AI and get response
         console.log('Sending message to AI agent...');
@@ -335,23 +233,6 @@ async function handleIncomingMessage(webhookData, content) {
 
         const aiResponse = await sendMessageToAI(aiChatId, messageToAI);
         console.log('AI Response:', aiResponse);
-
-        // Immediate crisis response for HIGH risk
-        // if (riskLevel === "HIGH") {
-        //     const crisisMessage =
-        //         "I’m really glad you told me this. You’re not alone, and help is available.\n\n" +
-        //         "If things feel overwhelming right now, please reach out to Care Corner. " +
-        //         "They provide free and confidential mental health support for young people in Singapore.\n\n" +
-        //         "👉 https://carey.carecorner.org.sg/\n\n" +
-        //         "If you’re in immediate danger, please call 999 or go to the nearest A&E.";
-            
-        //         // Send AI's response back to user on TikTok
-        //     await sendTikTokMessage(
-        //         webhookData.user_openid,
-        //         content.conversation_id,
-        //         crisisMessage
-        //     );
-        // }
 
         await logToSheet(
             content.conversation_id, // chatId
