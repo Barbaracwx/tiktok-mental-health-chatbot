@@ -39,14 +39,15 @@ async function logToSheet(chatId, userId, userMsg, aiMsg) {
         const sheets = google.sheets({ version: 'v4', auth });
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Raw_data!A:E', // Make sure your tab is named Sheet1
+            range: 'Raw_data!A:F', // Make sure your tab is named Sheet1
             valueInputOption: 'USER_ENTERED',
             resource: {
                 values: [[
                     chatId.toString(), 
                     userId.toString(), 
-                    userMsg, 
-                    aiMsg, 
+                    userMsg,
+                    aiMsg,
+                    riskTag || "N/A",
                     new Date().toLocaleString("en-SG", { timeZone: "Asia/Singapore" })
                 ]],
             },
@@ -160,6 +161,10 @@ const repliedMessages = new Set();
 // Handle incoming messages and get AI response
 async function handleIncomingMessage(webhookData, content) {
     const messageId = content.message_id;
+    const TAGGING_CHAT_ID = "3051176c095d4631a96e394342a1685e";
+    const conversationId = content.conversation_id;
+    const openId = webhookData.user_openid;
+    const userMessage = content.text.body;
 
     // 🔒 GUARD CLAUSE: ignore messages we've already replied to
     if (!messageId) {
@@ -193,10 +198,6 @@ async function handleIncomingMessage(webhookData, content) {
         console.log('Not a text message, skipping');
         return;
     }
-    
-    const userMessage = content.text.body;
-    const conversationId = content.conversation_id;
-    const openId = webhookData.user_openid;
 
     const staticReply = getStaticResponse(userMessage);
     if (staticReply) {
@@ -223,7 +224,7 @@ async function handleIncomingMessage(webhookData, content) {
         let messageToAI = userMessage;
         
         // Send to AI and get response
-        console.log('Sending message to AI agent...');
+        console.log('📡 Calling both AI agents in parallel...');
 
         // ⌨️ SHOW TYPING INDICATOR
         await sendTypingIndicator(
@@ -231,14 +232,20 @@ async function handleIncomingMessage(webhookData, content) {
             content.conversation_id
         );
 
-        const aiResponse = await sendMessageToAI(aiChatId, messageToAI);
+        const [aiResponse, riskLevel] = await Promise.all([
+            sendMessageToAI(aiChatId, userMessage),
+            sendMessageToAI(TAGGING_CHAT_ID, userMessage) 
+        ]);
+
+        console.log(`🧠 Risk Tagged as: ${riskLevel}`);
         console.log('AI Response:', aiResponse);
 
         await logToSheet(
-            content.conversation_id, // chatId
-            content.from,            // userId (TikTok open_id)
-            userMessage,             // userMsg
-            aiResponse               // aiMsg
+            conversationId,
+            content.from,
+            userMessage,
+            aiResponse,
+            riskLevel
         );
 
         await sendTikTokMessage(
