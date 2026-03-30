@@ -391,28 +391,32 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
 }
 
 // Send "typing..." indicator to TikTok
+// Send "typing..." indicator to TikTok
 async function sendTypingIndicator(businessId, conversationId) {
     const url = 'https://business-api.tiktok.com/open_api/v1.3/business/message/send/';
     
     console.log('⌨️ Sending typing indicator...');
-    
-    const payload = {
-        business_id: businessId,
-        recipient_type: "CONVERSATION",
-        recipient: conversationId,
-        message_type: "SENDER_ACTION",
-        sender_action: "TYPING"
-    };
-    
+
     try {
+        // 1. ADD THIS LINE: You must fetch the token here too!
+        const dynamicToken = await redis.get('tiktok_access_token');
+
+        const payload = {
+            business_id: businessId,
+            recipient_type: "CONVERSATION",
+            recipient: conversationId,
+            message_type: "SENDER_ACTION",
+            sender_action: "TYPING"
+        };
+    
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Token': dynamicToken
+                'Access-Token': dynamicToken // Now this variable exists
             },
             body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(5000) // 5 second timeout
+            signal: AbortSignal.timeout(5000) 
         });
         
         const data = await response.json();
@@ -423,7 +427,6 @@ async function sendTypingIndicator(businessId, conversationId) {
             console.log('⚠️ Typing indicator failed (non-critical):', data.message);
         }
     } catch (error) {
-        // Don't throw - typing indicator is not critical
         console.log('⚠️ Typing indicator error (non-critical):', error.message);
     }
 }
