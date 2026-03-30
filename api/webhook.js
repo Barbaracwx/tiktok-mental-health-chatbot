@@ -15,7 +15,7 @@ const redis = new Redis(process.env.REDIS_URL);
 // AI Agent URLs
 //const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
 //const SEND_MESSAGE_URL = "https://aibot-backend-vercel.vercel.app/api/send-message";
-const AI_MODEL = "azure~openai.gpt-4o-mini";
+const AI_MODEL = "azure~anthropic.claude-4-sonnet";
 
 const CREATE_CHAT_URL = "https://carelytics.sdnim.com/api/flows/trigger/0dc3a82d-1e76-408e-b4f9-cced0f5d9fc2";
 const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9c-555e-4b1b-af74-ef6f229f46e4";
