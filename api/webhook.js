@@ -5,10 +5,6 @@ const { google } = require('googleapis');
 // api/webhook.js
 // TikTok webhook handler with AI agent integration
 const Redis = require('ioredis');
-redis.on('error', (err) => {
-    // We log it as a warning instead of a crash-level error
-    console.warn('⚠️ Redis background connection hiccup (Non-critical):', err.message);
-});
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
