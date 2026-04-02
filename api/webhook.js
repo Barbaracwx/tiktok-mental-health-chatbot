@@ -109,7 +109,7 @@ export default async function handler(req, res) {
         }
 
         if (webhookData.event === 'im_receive_msg') {
-            await handleIncomingMessage(webhookData, content);
+            handleIncomingMessage(webhookData, content).catch(err => console.error(err));
         }
         
         // ⚡ CRITICAL: Respond immediately to prevent TikTok retries
