@@ -23,7 +23,7 @@ const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9
 
 // Store chat sessions (conversation_id -> chat_id mapping)
 // In production, you'd want to use a database instead of memory
-const chatSessions = new Map();
+//const chatSessions = new Map();
 
 // Helper to log to Google Sheets
 async function logToSheet(chatId, userId, userMsg, aiMsg, riskLevel) {
@@ -157,7 +157,7 @@ function getStaticResponse(message) {
 }
 
 // Keep track of message IDs we already responded to
-const repliedMessages = new Set();
+//const repliedMessages = new Set();
 
 // Handle incoming messages and get AI response
 async function handleIncomingMessage(webhookData, content) {
@@ -172,13 +172,11 @@ async function handleIncomingMessage(webhookData, content) {
         console.log('⚠️ No message_id found, skipping');
         return;
     }
-    if (repliedMessages.has(messageId)) {
-        console.log('⚠️ Already replied to this message, skipping:', messageId);
+    const isNewMessage = await redis.set(`lock:${messageId}`, 'processed', 'EX', 3600, 'NX');
+    if (!isNewMessage) {
+        console.log('⚠️ Duplicate message detected (Redis lock), skipping:', messageId);
         return;
     }
-
-    // Mark this message as replied
-    repliedMessages.add(messageId);
 
     console.log('📨 INCOMING MESSAGE');
     console.log('From:', content.from);
@@ -213,13 +211,13 @@ async function handleIncomingMessage(webhookData, content) {
     
     try {
         // Get or create AI chat session for this TikTok conversation
-        let aiChatId = chatSessions.get(content.conversation_id);
+        let aiChatId = await redis.get(`session:${conversationId}`);
         
         if (!aiChatId) {
             console.log('Creating new AI chat session...');
             aiChatId = await createAIChat();
-            chatSessions.set(content.conversation_id, aiChatId);
-            console.log('AI Chat ID:', aiChatId);
+            await redis.set(`session:${conversationId}`, aiChatId, 'EX', 86400);
+            console.log('AI Chat ID Saved to Redis:', aiChatId);
         }
         // Prepare message for AI
         let messageToAI = userMessage;
