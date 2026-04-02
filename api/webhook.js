@@ -5,6 +5,7 @@ const { google } = require('googleapis');
 // api/webhook.js
 // TikTok webhook handler with AI agent integration
 const Redis = require('ioredis');
+import { waitUntil } from '@vercel/functions';
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
         }
 
         if (webhookData.event === 'im_receive_msg') {
-            await handleIncomingMessage(webhookData, content);
+            waitUntil(handleIncomingMessage(webhookData, content));
         }
         
         // ⚡ CRITICAL: Respond immediately to prevent TikTok retries
