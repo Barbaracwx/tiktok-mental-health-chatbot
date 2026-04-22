@@ -3,27 +3,30 @@ export const config = {
 };
 const { google } = require('googleapis');
 // api/webhook.js
-// TikTok webhook handler with AI agent integration
+// TikTok webhook handler with AI agent integration + Gemini fallback
 const Redis = require('ioredis');
 import { waitUntil } from '@vercel/functions';
 
 // TikTok API credentials
 const APP_ID = '7576146137725878288';
-//const ACCESS_TOKEN = 'act.LLDF3xkKMTdpZ40stCfNK7rNxJZc4jViq7173cMRz7zW1sKOjX6UOaxqcpLy!6222.s1';
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 const redis = new Redis(process.env.REDIS_URL);
 
-// AI Agent URLs
-//const CREATE_CHAT_URL = "https://aibot-backend-vercel.vercel.app/api/create-chat";
-//const SEND_MESSAGE_URL = "https://aibot-backend-vercel.vercel.app/api/send-message";
+// AI Agent URLs (primary)
 const AI_MODEL = "azure~openai.gpt-5-2-chat";
-
 const CREATE_CHAT_URL = "https://carelytics.sdnim.com/api/flows/trigger/0dc3a82d-1e76-408e-b4f9-cced0f5d9fc2";
 const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9c-555e-4b1b-af74-ef6f229f46e4";
 
-// Store chat sessions (conversation_id -> chat_id mapping)
-// In production, you'd want to use a database instead of memory
-//const chatSessions = new Map();
+// Gemini fallback config
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+// ⚠️ IMPORTANT: Paste your full aibot system prompt here so Gemini
+// behaves consistently when it takes over as fallback.
+const FALLBACK_SYSTEM_PROMPT = `You are Carey, a warm and supportive mental health chatbot 
+for CareCorner Singapore. You help young people (aged 12–25) who may be experiencing 
+emotional difficulties. Be empathetic, non-judgmental, and supportive. 
+If someone is in danger, always refer them to call 995 or reach 1771.`;
 
 // Helper to log to Google Sheets
 async function logToSheet(chatId, userId, userMsg, aiMsg, riskLevel) {
@@ -31,7 +34,6 @@ async function logToSheet(chatId, userId, userMsg, aiMsg, riskLevel) {
         const auth = new google.auth.GoogleAuth({
             credentials: {
                 client_email: process.env.GOOGLE_CLIENT_EMAIL,
-                // The replace here is CRUCIAL for Vercel to read the key correctly
                 private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
             },
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -44,8 +46,8 @@ async function logToSheet(chatId, userId, userMsg, aiMsg, riskLevel) {
             valueInputOption: 'USER_ENTERED',
             resource: {
                 values: [[
-                    chatId.toString(), 
-                    userId.toString(), 
+                    chatId.toString(),
+                    userId.toString(),
                     userMsg,
                     aiMsg,
                     riskLevel || "N/A",
@@ -61,38 +63,35 @@ async function logToSheet(chatId, userId, userMsg, aiMsg, riskLevel) {
 
 
 export default async function handler(req, res) {
-    // Only accept POST requests (and GET for manual session clear)
     if (req.method === 'GET') {
-        // GET request to clear sessions
         const action = req.query.action;
         if (action === 'clear') {
             const count = chatSessions.size;
             chatSessions.clear();
-            return res.status(200).json({ 
-                success: true, 
+            return res.status(200).json({
+                success: true,
                 message: `Cleared ${count} chat sessions`,
                 cleared: count
             });
         }
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             message: 'Webhook is running',
             activeSessions: chatSessions.size
         });
     }
-    
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
         const webhookData = req.body;
-        
+
         console.log('=== NEW WEBHOOK EVENT ===');
         console.log('Event Type:', webhookData.event);
         console.log('Timestamp:', new Date(webhookData.create_time * 1000).toISOString());
-        
-        // Parse the content field
+
         let content = {};
         try {
             content = JSON.parse(webhookData.content);
@@ -100,53 +99,47 @@ export default async function handler(req, res) {
             console.log('Could not parse content:', e);
         }
 
-        // ==============================
-        // 🔒 GUARD CLAUSE TO PREVENT LOOP
-        // Ignore messages sent by the bot itself
+        // Guard: ignore messages sent by the bot itself
         if (content.from_user?.role === 'business_account') {
             console.log('🤖 Message sent by bot — ignoring to prevent loop');
-            // respond to webhook immediately so TikTok won't retry
             return res.status(200).json({ ok: true, message: 'Ignored bot message' });
         }
 
         if (webhookData.event === 'im_receive_msg') {
             waitUntil(handleIncomingMessage(webhookData, content));
         }
-        
-        // ⚡ CRITICAL: Respond immediately to prevent TikTok retries
-        res.status(200).json({ 
-            success: true, 
+
+        // Respond immediately to prevent TikTok retries
+        res.status(200).json({
+            success: true,
             message: 'Webhook received',
-            event: webhookData.event 
+            event: webhookData.event
         });
-        
+
     } catch (error) {
         console.error('Error processing webhook:', error);
-        // Still return 200 to prevent retries
         if (!res.headersSent) {
-            return res.status(200).json({ 
-                success: false, 
-                error: error.message 
+            return res.status(200).json({
+                success: false,
+                error: error.message
             });
         }
     }
 }
 
-// Function to check for "Quick-Reply" or "Hard-coded" triggers
+// Check for static/quick-reply triggers
 function getStaticResponse(message) {
     if (!message) return null;
-    
+
     const text = message.toLowerCase().trim();
 
-    // Define your triggers
     const triggers = {
         "book an appointment": "You can book a session with our team here. If you're unsure whether to book, I can help you figure that out too 😊\n\nhttps://carey.carecorner.org.sg",
-        "i am a caregiver / parent": "Thanks for supporting a young person — that matters a lot 💛 You can explore support options and resources here. If you’d like, I can also share tips on how to support them better.\n\nhttps://carecorner-ist.my.site.com/insight/",
-        "i am in urgent danger": "I’m really sorry you’re going through this. You don’t have to face it alone. If you are in immediate danger, please call 995. You can also talk to someone at 1771. I can stay with you while you reach out 💛",
-        "faqs": "Here are some common questions about our services. If you don’t see what you need, just ask me — I’ll try my best to help.\n\nhttps://carey.carecorner.org.sg/faqs/"
+        "i am a caregiver / parent": "Thanks for supporting a young person — that matters a lot 💛 You can explore support options and resources here. If you'd like, I can also share tips on how to support them better.\n\nhttps://carecorner-ist.my.site.com/insight/",
+        "i am in urgent danger": "I'm really sorry you're going through this. You don't have to face it alone. If you are in immediate danger, please call 995. You can also talk to someone at 1771. I can stay with you while you reach out 💛",
+        "faqs": "Here are some common questions about our services. If you don't see what you need, just ask me — I'll try my best to help.\n\nhttps://carey.carecorner.org.sg/faqs/"
     };
 
-    // Loop through the triggers to see if the user's message CONTAINS the keyword
     for (const [keyword, response] of Object.entries(triggers)) {
         if (text.includes(keyword)) {
             return response;
@@ -156,8 +149,50 @@ function getStaticResponse(message) {
     return null;
 }
 
-// Keep track of message IDs we already responded to
-//const repliedMessages = new Set();
+// ============================================================
+// NEW: Gemini fallback function
+// Called when primary AI (aibot via Directus) fails or times out
+// ============================================================
+async function sendMessageToFallbackLLM(userMessage) {
+    console.log('🔄 Attempting Gemini fallback LLM...');
+
+    const response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            system_instruction: {
+                parts: [{ text: FALLBACK_SYSTEM_PROMPT }]
+            },
+            contents: [
+                {
+                    parts: [{ text: userMessage }]
+                }
+            ],
+            generationConfig: {
+                maxOutputTokens: 500,
+                temperature: 0.7
+            }
+        }),
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+    });
+
+    if (!response.ok) {
+        const errText = await response.text();
+        console.error('❌ Gemini API error response:', errText);
+        throw new Error(`Gemini API failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+        console.warn('⚠️ Unexpected Gemini response format:', JSON.stringify(data));
+        throw new Error('Gemini returned empty response');
+    }
+
+    console.log('✅ Gemini fallback responded, length:', text.length, 'chars');
+    return text;
+}
 
 // Handle incoming messages and get AI response
 async function handleIncomingMessage(webhookData, content) {
@@ -167,7 +202,7 @@ async function handleIncomingMessage(webhookData, content) {
     const openId = webhookData.user_openid;
     const userMessage = content.text.body;
 
-    // 🔒 GUARD CLAUSE: ignore messages we've already replied to
+    // Guard: skip messages already replied to (dedup via Redis)
     if (!messageId) {
         console.log('⚠️ No message_id found, skipping');
         return;
@@ -184,20 +219,20 @@ async function handleIncomingMessage(webhookData, content) {
     console.log('To User Role:', content.to_user?.role);
     console.log('Conversation ID:', content.conversation_id);
     console.log('Message Type:', content.type);
-    
-    // CRITICAL: Only respond to messages FROM personal accounts (users)
-    // Ignore messages FROM business accounts (our own messages)
+
+    // Only respond to messages from personal accounts (users)
     if (content.from_user?.role === 'business_account') {
         console.log('⚠️ Message is from business account (our bot) - IGNORING to prevent loop');
         return;
     }
-    
+
     // Only process text messages
     if (content.type !== 'text') {
         console.log('Not a text message, skipping');
         return;
     }
 
+    // Check for static/quick-reply triggers first
     const staticReply = getStaticResponse(userMessage);
     if (staticReply) {
         console.log("⚡ Static template found. Bypassing AI.");
@@ -208,35 +243,55 @@ async function handleIncomingMessage(webhookData, content) {
 
     console.log('User Message:', userMessage);
 
-    
     try {
         // Get or create AI chat session for this TikTok conversation
         let aiChatId = await redis.get(`session:${conversationId}`);
-        
+
         if (!aiChatId) {
             console.log('Creating new AI chat session...');
             aiChatId = await createAIChat();
             await redis.set(`session:${conversationId}`, aiChatId, 'EX', 86400);
             console.log('AI Chat ID Saved to Redis:', aiChatId);
         }
-        // Prepare message for AI
-        let messageToAI = userMessage;
-        
-        // Send to AI and get response
-        console.log('📡 Calling both AI agents in parallel...');
 
-        // ⌨️ SHOW TYPING INDICATOR
-        await sendTypingIndicator(
-            webhookData.user_openid,
-            content.conversation_id
-        );
+        // Show typing indicator
+        await sendTypingIndicator(webhookData.user_openid, content.conversation_id);
 
-        const [aiResponse, riskLevel] = await Promise.all([
-            sendMessageToAI(aiChatId, userMessage),
-            sendMessageToAI(TAGGING_CHAT_ID, userMessage) 
-        ]);
+        // ============================================================
+        // UPDATED: Primary AI call with Gemini fallback
+        // ============================================================
+        let aiResponse, riskLevel;
 
-        console.log(`🧠 Risk Tagged as: ${riskLevel}`);
+        try {
+            // Attempt primary AI (aibot via Directus) + risk tagger in parallel
+            console.log('📡 Calling primary AI agents in parallel...');
+            [aiResponse, riskLevel] = await Promise.all([
+                sendMessageToAI(aiChatId, userMessage),
+                sendMessageToAI(TAGGING_CHAT_ID, userMessage)
+            ]);
+            console.log('✅ Primary AI responded successfully');
+            console.log(`🧠 Risk tagged as: ${riskLevel}`);
+
+        } catch (primaryError) {
+            // Primary AI is down or timed out — switch to Gemini
+            console.warn('⚠️ Primary AI failed:', primaryError.message);
+            console.warn('🔄 Switching to Gemini fallback...');
+
+            try {
+                aiResponse = await sendMessageToFallbackLLM(userMessage);
+                // Risk tagging is not possible without the primary tagger
+                riskLevel = "N/A (Gemini fallback)";
+                console.log('✅ Gemini fallback responded successfully');
+
+            } catch (fallbackError) {
+                // Both primary and Gemini have failed — send a safe hardcoded reply
+                console.error('❌ Both primary AI and Gemini fallback failed:', fallbackError.message);
+                aiResponse = "I'm having some trouble right now and can't respond properly. Please try again in a moment. If this is urgent, you can reach someone at 1771 💛";
+                riskLevel = "ERROR";
+            }
+        }
+        // ============================================================
+
         console.log('AI Response:', aiResponse);
 
         await logToSheet(
@@ -252,13 +307,13 @@ async function handleIncomingMessage(webhookData, content) {
             content.conversation_id,
             aiResponse
         );
-        
-        console.log('✅ AI response sent to user successfully');
-        
+
+        console.log('✅ Response sent to user successfully');
+
     } catch (error) {
         console.error('❌ Error handling message:', error);
-        
-        // Send fallback message if AI fails
+
+        // Last-resort fallback if something unexpected breaks
         try {
             await sendTikTokMessage(
                 webhookData.user_openid,
@@ -296,10 +351,10 @@ async function createAIChat() {
     }
 }
 
-// Send message to AI agent and get response
+// Send message to primary AI agent and get response
 async function sendMessageToAI(chatId, message) {
     console.log('💬 Sending to AI - Chat ID:', chatId, 'Message:', message);
-    
+
     try {
         console.log('📡 Making fetch request to backend...');
         const response = await fetch(SEND_MESSAGE_URL, {
@@ -311,19 +366,18 @@ async function sendMessageToAI(chatId, message) {
             }),
             signal: AbortSignal.timeout(50000) // 50 second timeout
         });
-        
+
         console.log('📥 Got response from backend, status:', response.status);
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Backend error response:', errorText);
             throw new Error(`Failed to send message to AI: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json();
         console.log('✅ AI response received, length:', data.response?.content?.length || 0, 'chars');
-        
-        // Extract the text response from AI
+
         if (data.response?.content) {
             return data.response.content;
         } else if (data.response) {
@@ -335,7 +389,7 @@ async function sendMessageToAI(chatId, message) {
     } catch (error) {
         console.error('💥 Error sending message to AI:', error.name, error.message);
         if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-            console.error('⏱️ Backend request timed out after 30 seconds');
+            console.error('⏱️ Backend request timed out after 50 seconds');
             throw new Error('AI service is taking too long to respond. Please try again.');
         }
         throw error;
@@ -348,12 +402,12 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
 
     const dynamicToken = await redis.get('tiktok_access_token');
     console.log("Using token from Redis:", dynamicToken);
-    
+
     console.log('🚀 Sending TikTok message...');
     console.log('Business ID:', businessId);
     console.log('Conversation ID:', conversationId);
     console.log('Message length:', messageText.length, 'characters');
-    
+
     const payload = {
         business_id: businessId,
         recipient_type: "CONVERSATION",
@@ -363,7 +417,7 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
             body: messageText
         }
     };
-    
+
     try {
         console.log('📡 Making fetch request to TikTok API...');
         const response = await fetch(url, {
@@ -373,18 +427,18 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
                 'Access-Token': dynamicToken
             },
             body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(10000) // 10 second timeout
+            signal: AbortSignal.timeout(10000)
         });
-        
+
         console.log('📥 Got response from TikTok, status:', response.status);
         const data = await response.json();
         console.log('📄 Response data:', JSON.stringify(data));
-        
+
         if (data.code !== 0) {
             console.error('❌ TikTok API Error:', data);
             throw new Error(`TikTok API Error: ${data.message}`);
         }
-        
+
         console.log('✅ TikTok message sent successfully');
         return data;
     } catch (error) {
@@ -397,14 +451,12 @@ async function sendTikTokMessage(businessId, conversationId, messageText) {
 }
 
 // Send "typing..." indicator to TikTok
-// Send "typing..." indicator to TikTok
 async function sendTypingIndicator(businessId, conversationId) {
     const url = 'https://business-api.tiktok.com/open_api/v1.3/business/message/send/';
-    
+
     console.log('⌨️ Sending typing indicator...');
 
     try {
-        // 1. ADD THIS LINE: You must fetch the token here too!
         const dynamicToken = await redis.get('tiktok_access_token');
 
         const payload = {
@@ -414,19 +466,19 @@ async function sendTypingIndicator(businessId, conversationId) {
             message_type: "SENDER_ACTION",
             sender_action: "TYPING"
         };
-    
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Token': dynamicToken // Now this variable exists
+                'Access-Token': dynamicToken
             },
             body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(5000) 
+            signal: AbortSignal.timeout(5000)
         });
-        
+
         const data = await response.json();
-        
+
         if (data.code === 0) {
             console.log('✅ Typing indicator sent');
         } else {
