@@ -3,7 +3,6 @@ export const config = {
 };
 
 const Redis = require('ioredis');
-const { Telegraf } = require('telegraf');
 import { waitUntil } from '@vercel/functions';
 
 const redis = new Redis(process.env.REDIS_URL);
