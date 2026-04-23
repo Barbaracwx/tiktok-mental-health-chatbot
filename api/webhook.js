@@ -7,21 +7,73 @@ import { waitUntil } from '@vercel/functions';
 
 const redis = new Redis(process.env.REDIS_URL);
 
-const APP_ID = '7576146137725878288';
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-
 const CREATE_CHAT_URL = "https://carelytics.sdnim.com/api/flows/trigger/0dc3a82d-1e76-408e-b4f9-cced0f5d9fc2";
 const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9c-555e-4b1b-af74-ef6f229f46e4";
 
 const DIFY_API_URL = process.env.DIFY_API_URL;
 const DIFY_API_KEY = process.env.DIFY_API_KEY;
 
-// ─── DIFY FALLBACK ───────────────────────────────────────────────────────────
+const MAX_HISTORY = 20; // 10 exchanges
+const MAX_REPLAY = 10;  // max messages to replay into AIBot on recovery
+
+// ─── HISTORY HELPERS ──────────────────────────────────────────────────────────
+
+async function saveToHistory(conversationId, userMessage, assistantReply, handledBy) {
+  try {
+    const key = `history:${conversationId}`;
+    const existing = await redis.get(key);
+    const history = existing ? JSON.parse(existing) : [];
+
+    history.push({ role: 'user', content: userMessage, handledBy });
+    history.push({ role: 'assistant', content: assistantReply, handledBy });
+
+    // Keep only last MAX_HISTORY messages
+    if (history.length > MAX_HISTORY) {
+      history.splice(0, history.length - MAX_HISTORY);
+    }
+
+    await redis.set(key, JSON.stringify(history), 'EX', 21600); // 6 hours
+    console.log(`💾 Saved to history (${handledBy}), total messages: ${history.length}`);
+  } catch (error) {
+    console.error('⚠️ Failed to save history:', error.message);
+  }
+}
+
+async function getHistory(conversationId) {
+  try {
+    const key = `history:${conversationId}`;
+    const existing = await redis.get(key);
+    return existing ? JSON.parse(existing) : [];
+  } catch (error) {
+    console.error('⚠️ Failed to get history:', error.message);
+    return [];
+  }
+}
+
+// ─── DIFY FALLBACK ────────────────────────────────────────────────────────────
 
 async function sendMessageToDify(conversationId, userMessage) {
   console.log('🔄 Falling back to Dify...');
 
   const difyConversationId = await redis.get(`dify_session:${conversationId}`) || '';
+  const isFirstDifyMessage = !difyConversationId;
+
+  let queryToSend = userMessage;
+
+  // On first Dify message, prepend AIBot history as context
+  if (isFirstDifyMessage) {
+    const history = await getHistory(conversationId);
+    const aibotHistory = history.filter(m => m.handledBy === 'aibot');
+
+    if (aibotHistory.length > 0) {
+      const transcript = aibotHistory
+        .map(m => `${m.role === 'user' ? 'User' : 'Carey'}: ${m.content}`)
+        .join('\n');
+
+      queryToSend = `[Previous conversation before handover]\n${transcript}\n\n[Current message]\nUser: ${userMessage}`;
+      console.log('📋 Prepended AIBot history to first Dify message');
+    }
+  }
 
   const response = await fetch(`${DIFY_API_URL}/chat-messages`, {
     method: 'POST',
@@ -31,7 +83,7 @@ async function sendMessageToDify(conversationId, userMessage) {
     },
     body: JSON.stringify({
       inputs: {},
-      query: userMessage,
+      query: queryToSend,
       response_mode: 'blocking',
       conversation_id: difyConversationId,
       user: conversationId,
@@ -46,7 +98,6 @@ async function sendMessageToDify(conversationId, userMessage) {
 
   const data = await response.json();
 
-  // Save Dify conversation session to Redis
   if (data.conversation_id) {
     await redis.set(`dify_session:${conversationId}`, data.conversation_id, 'EX', 86400);
   }
@@ -54,7 +105,7 @@ async function sendMessageToDify(conversationId, userMessage) {
   return data.answer;
 }
 
-// ─── AIBOT ───────────────────────────────────────────────────────────────────
+// ─── AIBOT ────────────────────────────────────────────────────────────────────
 
 async function createAIChat() {
   console.log('🤖 Creating AIBot chat session...');
@@ -115,19 +166,52 @@ async function getAIResponse(conversationId, userMessage) {
       await redis.set(`session:${conversationId}`, aiChatId, 'EX', 86400);
     }
 
-    // Step 2: Send message to AIBot
+    // Step 2: Check if AIBot missed any Dify messages and replay them
+    const history = await getHistory(conversationId);
+    const lastAibotIndex = history.map(m => m.handledBy).lastIndexOf('aibot');
+    const missedByAibot = history
+      .slice(lastAibotIndex + 1)
+      .filter(m => m.handledBy === 'dify')
+      .slice(-MAX_REPLAY); // cap at last 10
+
+    if (missedByAibot.length > 0) {
+      console.log(`🔁 Replaying ${missedByAibot.length} missed Dify messages into AIBot...`);
+
+      for (const msg of missedByAibot) {
+        if (msg.role === 'user') {
+          try {
+            await sendMessageToAI(aiChatId, msg.content);
+            console.log('✅ Replayed message into AIBot:', msg.content.slice(0, 50));
+          } catch (replayError) {
+            console.error('⚠️ Failed to replay message into AIBot:', replayError.message);
+            // If replay itself fails, AIBot is still down — throw to trigger Dify fallback
+            throw replayError;
+          }
+        }
+      }
+      console.log('✅ AIBot caught up on missed Dify messages');
+    }
+
+    // Step 3: Send actual user message to AIBot
     const aiResponse = await sendMessageToAI(aiChatId, userMessage);
     console.log('✅ AIBot responded successfully');
+
+    // Step 4: Save to history
+    await saveToHistory(conversationId, userMessage, aiResponse, 'aibot');
+
     return aiResponse;
 
   } catch (error) {
-    // Any failure in AIBot → fall back to Dify
     console.error('❌ AIBot failed:', error.message);
     console.log('🔄 Routing to Dify fallback...');
 
     try {
       const difyResponse = await sendMessageToDify(conversationId, userMessage);
       console.log('✅ Dify fallback responded successfully');
+
+      // Save to history as dify
+      await saveToHistory(conversationId, userMessage, difyResponse, 'dify');
+
       return difyResponse;
     } catch (difyError) {
       console.error('❌ Dify fallback also failed:', difyError.message);
@@ -136,7 +220,7 @@ async function getAIResponse(conversationId, userMessage) {
   }
 }
 
-// ─── STATIC RESPONSES ────────────────────────────────────────────────────────
+// ─── STATIC RESPONSES ─────────────────────────────────────────────────────────
 
 function getStaticResponse(message) {
   if (!message) return null;
