@@ -108,7 +108,6 @@ async function sendMessageToDify(conversationId, userMessage) {
 // ─── AIBOT ────────────────────────────────────────────────────────────────────
 
 async function createAIChat() {
-  throw new Error('Forced failure to test Dify fallback'); // ← add this line temporarily  
   console.log('🤖 Creating AIBot chat session...');
 
   const response = await fetch(CREATE_CHAT_URL, {
@@ -133,6 +132,7 @@ async function createAIChat() {
 }
 
 async function sendMessageToAI(chatId, message) {
+    throw new Error('Forced failure to test Dify fallback'); // ← add this temporarily
   console.log('💬 Sending to AIBot - Chat ID:', chatId);
 
   const response = await fetch(SEND_MESSAGE_URL, {
