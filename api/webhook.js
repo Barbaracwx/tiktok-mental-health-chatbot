@@ -306,7 +306,7 @@ async function tagMessage(userMessage) {
     const data = await response.json();
     const tag = data.answer?.trim().toLowerCase();
 
-    if (['HIGH', 'MODERATE', 'LOW'].includes(tag)) {
+    if (['high risk', 'moderate risk', 'low risk'].includes(tag)) {
       return tag;
     }
 
