@@ -241,6 +241,38 @@ function getStaticResponse(message) {
   return null;
 }
 
+// ─── LOG TO GOOGLE SHEETS ──────────────────────────────────────────────────
+async function logToGoogleSheets(conversationId, from, userMessage, aiResponse) {
+  try {
+    const { GoogleAuth } = require('google-auth-library');
+    const { google } = require('googleapis');
+
+    const auth = new GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const sheets = google.sheets({ version: 'v4', auth });
+    const timestamp = new Date().toISOString();
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: process.env.SPREADSHEET_ID,
+      range: 'Raw_data!A:E',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[conversationId, from, userMessage, aiResponse, timestamp]],
+      },
+    });
+
+    console.log('✅ Logged to Google Sheets');
+  } catch (error) {
+    console.error('⚠️ Failed to log to Google Sheets:', error.message);
+  }
+}
+
 // ─── HANDLE INCOMING MESSAGE ──────────────────────────────────────────────────
 
 async function handleIncomingMessage(webhookData, content) {
@@ -286,6 +318,8 @@ async function handleIncomingMessage(webhookData, content) {
     await sendTypingIndicator(webhookData.user_openid, conversationId);
 
     const reply = await getAIResponse(conversationId, userMessage);
+
+    await logToGoogleSheets(conversationId, content.from, userMessage, reply);
 
     await sendTikTokMessage(webhookData.user_openid, conversationId, reply);
     console.log('✅ Reply sent to user');
