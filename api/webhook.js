@@ -113,7 +113,7 @@ async function createAIChat() {
   const response = await fetch(CREATE_CHAT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ model: "azure~openai.gpt-5-2-chat"}),
     signal: AbortSignal.timeout(10000),
   });
 
