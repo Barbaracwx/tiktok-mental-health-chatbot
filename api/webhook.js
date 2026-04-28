@@ -242,7 +242,7 @@ function getStaticResponse(message) {
 }
 
 // ─── LOG TO GOOGLE SHEETS ──────────────────────────────────────────────────
-async function logToGoogleSheets(conversationId, from, userMessage, aiResponse) {
+async function logToGoogleSheets(conversationId, from, userMessage, aiResponse, tag = '') {
   try {
     const { GoogleAuth } = require('google-auth-library');
     const { google } = require('googleapis');
@@ -272,13 +272,49 @@ async function logToGoogleSheets(conversationId, from, userMessage, aiResponse) 
       range: 'Raw_data!A:E',
       valueInputOption: 'RAW',
       requestBody: {
-        values: [[conversationId, from, userMessage, aiResponse, timestamp]],
+        values: [[conversationId, from, userMessage, aiResponse, timestamp, tag]],
       },
     });
 
     console.log('✅ Logged to Google Sheets');
   } catch (error) {
     console.error('⚠️ Failed to log to Google Sheets:', error.message);
+  }
+}
+
+// -── TAGGING WITH DIFY ─────────────────────────────────────────────────────
+async function tagMessage(userMessage) {
+  try {
+    const response = await fetch('https://api.dify.ai/v1/chat-messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.DIFY_TAGGING_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs: {},
+        query: userMessage,
+        response_mode: 'blocking',
+        conversation_id: '',
+        user: 'tagging-bot',
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) throw new Error(`Tagging Dify error: ${response.status}`);
+
+    const data = await response.json();
+    const tag = data.answer?.trim().toLowerCase();
+
+    if (['high risk', 'moderate risk', 'low risk'].includes(tag)) {
+      return tag;
+    }
+
+    console.warn('⚠️ Unexpected tag value:', tag);
+    return 'untagged';
+  } catch (error) {
+    console.error('⚠️ Tagging failed:', error.message);
+    return 'untagged';
   }
 }
 
@@ -328,7 +364,11 @@ async function handleIncomingMessage(webhookData, content) {
 
     const reply = await getAIResponse(conversationId, userMessage);
 
-    await logToGoogleSheets(conversationId, content.from, userMessage, reply);
+    // Fire and forget — user doesn't wait for this
+    waitUntil((async () => {
+      const tag = await tagMessage(userMessage);
+      await logToGoogleSheets(conversationId, content.from, userMessage, reply, tag);
+    })());
 
     await sendTikTokMessage(webhookData.user_openid, conversationId, reply);
     console.log('✅ Reply sent to user');
