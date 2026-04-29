@@ -99,7 +99,7 @@ async function sendMessageToDify(conversationId, userMessage) {
   const data = await response.json();
 
   if (data.conversation_id) {
-    await redis.set(`dify_session:${conversationId}`, data.conversation_id, 'EX', 86400);
+    await redis.set(`dify_session:${conversationId}`, data.conversation_id, 'EX', 21600);
   }
 
   return data.answer;
@@ -163,7 +163,7 @@ async function getAIResponse(conversationId, userMessage) {
     if (!aiChatId) {
       console.log('No AIBot session found, creating one...');
       aiChatId = await createAIChat();
-      await redis.set(`session:${conversationId}`, aiChatId, 'EX', 86400);
+      await redis.set(`session:${conversationId}`, aiChatId, 'EX', 21600);
     }
 
     // Step 2: Check if AIBot missed any Dify messages and replay them
