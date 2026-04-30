@@ -68,20 +68,15 @@ This is an automated report from the Carey TikTok Bot.
 
     // Step 5: Send email via Outlook
     const transporter = nodemailer.createTransport({
-      host: 'smtp.office365.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.OUTLOOK_EMAIL,
-        pass: process.env.OUTLOOK_PASSWORD,
-      },
-      tls: {
-        ciphers: 'SSLv3',
-      },
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_EMAIL,
+        pass: process.env.GMAIL_PASSWORD,
+    },
     });
 
     await transporter.sendMail({
-      from: process.env.OUTLOOK_EMAIL,
+      from: process.env.GMAIL_EMAIL,
       to: process.env.ALERT_EMAIL,
       subject: `⚠️ Carey Bot — ${highRiskRows.length} High Risk Message(s) Today (${todaySGT})`,
       text: emailBody,
