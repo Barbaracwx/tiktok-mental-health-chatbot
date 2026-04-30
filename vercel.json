@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/daily-risk-report",
-      "schedule": "59 15 * * *"
+      "schedule": "59 15 * * *" 
     }
   ]
 }
