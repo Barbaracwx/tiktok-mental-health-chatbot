@@ -7,8 +7,8 @@ import { waitUntil } from '@vercel/functions';
 
 const redis = new Redis(process.env.REDIS_URL);
 
-const CREATE_CHAT_URL = "https://carelytics.sdnim.com/api/flows/trigger/0dc3a82d-1e76-408e-b4f9-cced0f5d9fc2";
-const SEND_MESSAGE_URL = "https://carelytics.sdnim.com/api/flows/trigger/e33fcc9c-555e-4b1b-af74-ef6f229f46e4";
+const CREATE_CHAT_URL = process.env.CREATE_CHAT_URL;
+const SEND_MESSAGE_URL = process.env.SEND_MESSAGE_URL;
 
 const DIFY_API_URL = process.env.DIFY_API_URL;
 const DIFY_API_KEY = process.env.DIFY_API_KEY;
